@@ -20,7 +20,8 @@ public class Client {
 		out.println("Accept: */*");
 		out.println("Accept-Language: zh-CN");
 		out.println("Host: 1xx.1xx.1.1xx:8080");
-		out.println("Connection: keep-alive");
+		// out.println("Connection: closed");//请求完立即断掉
+		out.println("Connection: keep-alive");// 请求完继续保持连接
 		out.println();
 		out.println();
 		BufferedReader br = new BufferedReader(new InputStreamReader(client.getInputStream()));

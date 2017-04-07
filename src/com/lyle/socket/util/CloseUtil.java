@@ -11,8 +11,9 @@ import java.io.IOException;
  */
 public class CloseUtil {
 
-	public static <T extends Closeable> void closeAll(T... io) {
-		for (T temp : io) {
+	@SafeVarargs
+	public static <T extends Closeable> void closeAll(T... stream) {
+		for (T temp : stream) {
 			if (null != temp) {
 				try {
 					temp.close();

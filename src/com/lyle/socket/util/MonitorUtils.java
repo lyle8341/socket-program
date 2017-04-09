@@ -34,7 +34,7 @@ public class MonitorUtils {
 		try {
 			multiMap.put(msg.getBytes(CHARSETNAME).length, msg);
 		} catch (UnsupportedEncodingException e) {
-			//
+			throw new RuntimeException("不支持的字符集！【" + CHARSETNAME + "】");
 		}
 	}
 

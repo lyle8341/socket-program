@@ -1,8 +1,9 @@
 package com.lyle.socket.util;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 
 /**
@@ -101,8 +102,11 @@ public final class HexUtils {
 	 */
 	public static void main(String[] args) {
 		try {
-			BufferedReader br = new BufferedReader(new FileReader("C:/Users/swere/Desktop/jk/str.txt"));
-			OutputStream os = new FileOutputStream("C:/Users/swere/Desktop/jk/io.txt");
+			// BufferedReader br = new BufferedReader(new
+			// FileReader("C:/Users/swere/Desktop/jk/str.txt"));
+			BufferedReader br = new BufferedReader(
+					new InputStreamReader(new FileInputStream("C:/Users/swere/Desktop/str.txt"), "GB2312"));
+			OutputStream os = new FileOutputStream("C:/Users/swere/Desktop/io.txt");
 			String line = null;
 			while ((line = br.readLine()) != null) {
 				byte[] bytes = fromHexString(line);

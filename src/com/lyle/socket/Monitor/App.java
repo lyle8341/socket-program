@@ -19,10 +19,11 @@ public class App {
 		List<String> params = new ArrayList<>();
 		// FileInputStream fis = new FileInputStream("C:/Users/swere/Desktop/jk/io.txt");
 		FileInputStream fis = new FileInputStream("C:/Users/swere/Desktop/io.txt");
+		// FileInputStream fis = new FileInputStream("C:/Users/swere/Desktop/send.txt");
 		DataInputStream dis = new DataInputStream(fis);
 		MonitorUtils.parseResponse(dis, params);
-		for (String s : params) {
-			System.out.println(s);
-		}
+		// for (String s : params) {
+		// System.out.println(s);
+		// }
 	}
 }

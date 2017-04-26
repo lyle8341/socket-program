@@ -17,14 +17,11 @@ public class Send {
 
 	public static void main(String[] args) throws Exception {
 		Socket client = new Socket("localhost", 8888);
-		// while (true) {
-		// Thread.sleep(10000);
 		DataOutputStream dos = new DataOutputStream(client.getOutputStream());
 		Multimap<Integer, String> multiMap = ArrayListMultimap.create();
-		MonitorUtils.createMap(multiMap, "温度|15");
-		MonitorUtils.createMap(multiMap, "电压|220");
+		MonitorUtils.createMap(multiMap, "温度|11");
+		MonitorUtils.createMap(multiMap, "电压|23");
+		MonitorUtils.createMap(multiMap, "天气|43");
 		MonitorUtils.sendMsg(dos, multiMap);
-		MonitorUtils.sendMsg(dos, multiMap);
-		// }
 	}
 }

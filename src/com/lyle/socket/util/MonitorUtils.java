@@ -3,7 +3,7 @@ package com.lyle.socket.util;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -12,6 +12,7 @@ import java.util.Set;
 import org.apache.commons.lang3.ArrayUtils;
 
 import com.google.common.collect.Multimap;
+import com.lyle.socket.Monitor.wasu.Warning;
 
 /**
  * @ClassName: MonitorUtils
@@ -21,7 +22,7 @@ import com.google.common.collect.Multimap;
  */
 public class MonitorUtils {
 
-	private static final String CHARSETNAME = "GB2312";
+	private static final Charset CHARSETNAME = Charset.forName("GB2312");
 
 	/**
 	 * @Title: createMap
@@ -31,11 +32,7 @@ public class MonitorUtils {
 	 * @return: void
 	 */
 	public static void createMap(Multimap<Integer, String> multiMap, String msg) {
-		try {
-			multiMap.put(msg.getBytes(CHARSETNAME).length, msg);
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException("不支持的字符集！【" + CHARSETNAME + "】");
-		}
+		multiMap.put(msg.getBytes(CHARSETNAME).length, msg);
 	}
 
 	/**
@@ -45,17 +42,32 @@ public class MonitorUtils {
 	 * @throws IOException
 	 * @return: void
 	 */
-	public static void sendMsg(DataOutputStream dos, Multimap<Integer, String> content) throws IOException {
+	public static void sendMsg(DataOutputStream dos, Multimap<Integer, String> content) {
 		// -------------------包头--------------------
 		// 包头标记4byte--byte
 		byte[] head = { (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF };
-		dos.write(head);
+		try {
+			dos.write(head);
+		} catch (IOException e) {
+			CloseUtil.closeAll(dos);
+			System.err.println("发送[包头标记]时出错！");
+		}
 		// 协议版本4byte--byte
 		byte[] version = { 0x02, 0x00, 0x00, 0x01 };
-		dos.write(version);
+		try {
+			dos.write(version);
+		} catch (IOException e) {
+			CloseUtil.closeAll(dos);
+			System.err.println("发送[协议版本]时出错！");
+		}
 		// 命令类型4byte--int
-		byte[] type = { (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF };
-		dos.write(type);
+		byte[] type = { (byte) 0x02, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF };// 只接收事件
+		try {
+			dos.write(type);
+		} catch (IOException e) {
+			CloseUtil.closeAll(dos);
+			System.err.println("发送[命令类型]时出错！");
+		}
 		// 包体长度4byte
 		// 所有的组长度
 		int allGroupLength = (content.size()) * 2;
@@ -73,13 +85,23 @@ public class MonitorUtils {
 		}
 		System.out.println("发送包体长度：" + (allGroupLength + allContentLength));
 		byte[] bodyLength = int2byte(allGroupLength + allContentLength);
-		dos.write(bodyLength);
+		try {
+			dos.write(bodyLength);
+		} catch (IOException e) {
+			CloseUtil.closeAll(dos);
+			System.err.println("发送[包体长度]时出错！");
+		}
 		// 保留4byte
 		byte[] retain = { (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF };
-		dos.write(retain);
-		dos.write(retain);
-		dos.write(retain);
-		dos.write(retain);
+		try {
+			dos.write(retain);
+			dos.write(retain);
+			dos.write(retain);
+			dos.write(retain);
+		} catch (IOException e) {
+			CloseUtil.closeAll(dos);
+			System.err.println("发送[保留]时出错！");
+		}
 		// -------------------包体---------------------
 		// 组长度2byte--short+内容(key|value)
 		if (null != content && content.size() > 0) {
@@ -88,12 +110,27 @@ public class MonitorUtils {
 				Collection<String> value = content.get(key);
 				Iterator<String> iterator = value.iterator();
 				while (iterator.hasNext()) {
-					dos.write(shortToByte((short) key.intValue()));
-					dos.write(iterator.next().getBytes(CHARSETNAME));
+					try {
+						dos.write(shortToByte((short) key.intValue()));
+					} catch (IOException e) {
+						CloseUtil.closeAll(dos);
+						System.err.println("发送[组长度]时出错！");
+					}
+					try {
+						dos.write(iterator.next().getBytes(CHARSETNAME));
+					} catch (IOException e) {
+						CloseUtil.closeAll(dos);
+						System.err.println("发送[组内容]时出错！");
+					}
 				}
 			}
 		}
-		dos.flush();
+		try {
+			dos.flush();
+		} catch (IOException e) {
+			CloseUtil.closeAll(dos);
+			System.err.println("刷新管道出错！");
+		}
 	}
 
 	/**
@@ -103,35 +140,141 @@ public class MonitorUtils {
 	 * @throws IOException
 	 * @return: void
 	 */
-	public static void parseResponse(DataInputStream dis, List<String> params) throws IOException {
-		for (int i = 0; i < 12; i++) {
-			dis.readByte();
-		}
-		// 包体长度
-		byte[] bodyLength = new byte[4];
-		dis.read(bodyLength);
-		ArrayUtils.reverse(bodyLength);
-		int totalLength = byteToInt(bodyLength);
-		System.out.println("接收包体长度：" + totalLength);
-		for (int i = 0; i < 16; i++) {
-			dis.readByte();
-		}
-		int len = 0;
-		int group = 1;
-		byte[] buff = null;
-		if (totalLength > 0) {
-			while (totalLength > len) {
-				buff = new byte[2];
-				dis.read(buff);
-				int temp = byteToShort(buff);
-				buff = new byte[temp];
-				dis.read(buff);
-				params.add(new String(buff, 0, temp, CHARSETNAME));
-				System.out.println(new String(buff, 0, temp, CHARSETNAME));
-				len += temp + 2;
-				System.out.println("【组" + group++ + "的内容长度：---->】" + temp + "   |   字节数：" + len);
+	public static void parseResponse(DataInputStream dis, List<String> params) {
+		boolean flag = true;
+		while (flag) {
+			try {
+				while (dis.available() > 0) {
+					for (int i = 0; i < 12; i++) {
+						try {
+							dis.readByte();
+						} catch (IOException e) {
+							CloseUtil.closeAll(dis);
+							flag = false;
+							System.err.println("读取[包头标记|协议版本|命令类型]时出错！");
+						}
+					}
+					// 包体长度
+					byte[] bodyLength = new byte[4];
+					try {
+						dis.read(bodyLength);
+					} catch (IOException e) {
+						CloseUtil.closeAll(dis);
+						flag = false;
+						System.err.println("读取[包体长度]时出错！");
+					}
+					/*
+					 * ArrayUtils.reverse(bodyLength); int totalLength = byteToInt(bodyLength);
+					 */
+					int totalLength = getLength(bodyLength);
+					System.out.println("接收包体长度：" + totalLength);
+					for (int i = 0; i < 16; i++) {
+						try {
+							dis.readByte();
+						} catch (IOException e) {
+							CloseUtil.closeAll(dis);
+							flag = false;
+							System.err.println("读取[保留]时出错！");
+						}
+					}
+					int len = 0;
+					/* int group = 1; */
+					byte[] buff = null;
+					if (totalLength > 0) {
+						while (totalLength > len) {
+							buff = new byte[2];
+							try {
+								dis.read(buff);
+							} catch (IOException e) {
+								CloseUtil.closeAll(dis);
+								flag = false;
+								System.err.println("读取[组长度]时出错！");
+							}
+							int temp = byteToShort(buff);
+							buff = new byte[temp];
+							try {
+								dis.read(buff);
+							} catch (IOException e) {
+								CloseUtil.closeAll(dis);
+								flag = false;
+								System.out.println("读取[组内容]时出错！");
+							}
+							params.add(new String(buff, CHARSETNAME));
+							len += temp + 2;
+							/*
+							 * System.out.println("【组" + group++ + "的内容长度：->" + temp + "】,内容【" + new
+							 * String(buff, CHARSETNAME) + "】" + " | 截止当前读取的总字节数：" + len);
+							 */
+							// System.out.println(new String(buff, CHARSETNAME));
+						}
+					}
+				}
+			} catch (IOException e) {
+				CloseUtil.closeAll(dis);
+				flag = false;
+				System.err.println("检查是否有可读数据时候发生错误！");
+			}
+			try {
+				processData(params);
+				Thread.sleep(5000);
+			} catch (InterruptedException e) {
+				CloseUtil.closeAll(dis);
+				flag = false;
+				System.err.println("客户端休息时候发生错误！");
+			} catch (Exception e) {
+				CloseUtil.closeAll(dis);
+				flag = false;
+				System.err.println(e.getMessage());
 			}
 		}
+	}
+
+	/**
+	 * @Title: processData
+	 * @Description: 处理数据
+	 * @param params
+	 * @return: void
+	 * @throws Exception
+	 */
+	private static void processData(List<String> params) throws Exception {
+		Iterator<String> its = params.iterator();
+		while (its.hasNext()) {
+			String value = its.next();
+			String[] kv = value.split("\\|\\|");
+			if (kv.length == 2) {
+				// 处理
+				String[] values = kv[1].split("\\|");
+				if (values.length == 7) {
+					Warning warn = converToWarning(kv[0], values);
+					System.out.println(warn);
+				} else {
+					throw new Exception("事件值格式不对，可能是接收数据不全");
+				}
+				its.remove();// 移除
+			} else {
+				throw new Exception("事件格式不对！可能是接收的数据不全");
+			}
+		}
+	}
+
+	/**
+	 * @param kv
+	 * @Title: converToWarning
+	 * @Description: 把截取的每段数据封装到对象
+	 * @param values
+	 * @return: void
+	 */
+	private static Warning converToWarning(String kv, String[] values) {
+		Warning w = new Warning();
+		w.setEventKey(kv);
+		w.setStationName(values[0]);
+		w.setEventSource(values[1]);
+		w.setEventContent(values[2]);
+		w.setEventLevel(values[3]);
+		w.setEventType(values[4]);
+		w.setEventHappen(DateUtils.str2Date(values[5]));
+		w.setEventId(values[6]);
+		return w;
 	}
 
 	/**
@@ -169,22 +312,25 @@ public class MonitorUtils {
 	}
 
 	public static void main(String[] args) {
-		byte[] b = { 0x0F, 0x00 };
-		System.out.println(byteToShort(b));
-		// byte[] b = { 0x00, 0x00, 0x00, 0x17 };
-		// ArrayUtils.reverse(b);
-		// System.out.println(byteToInt(b));
+		// byte[] b = { (byte) 0xD8, (byte) 0xB1 };
+		// System.out.println(byteToShort(b));
+		byte[] b = { (byte) 0xCA, (byte) 0xFF, 0x0F, 0x00 };
+		System.out.println(getLength(b));
+		ArrayUtils.reverse(b);
+		System.out.println(byteToInt(b));
+		// byte[] b = { (byte) 0xA1, 0x68, 0x0A, 0x00 };
+		// System.out.println(dwordBytesToLong(b));
 	}
 
 	public static byte[] shortToByte(short s) {
 		byte[] b = new byte[2];
-		b[1] = (byte) (s >> 8);
 		b[0] = (byte) (s >> 0);
+		b[1] = (byte) (s >> 8);
 		return b;
 	}
 
 	public static short byteToShort(byte[] b) {
-		return (short) (((b[1] << 8) | b[0] & 0xff));
+		return (short) (((b[0] & 0xff) | (b[1] << 8)));
 	}
 
 	/**
@@ -200,5 +346,15 @@ public class MonitorUtils {
 		targets[2] = (byte) ((res >> 16) & 0xff);// 次高位
 		targets[3] = (byte) (res >>> 24);// 最高位,无符号右移。
 		return targets;
+	}
+
+	/**
+	 * @Title: getLength
+	 * @Description: 解析包体长度数组
+	 * @param head
+	 * @return: int
+	 */
+	public static int getLength(byte[] head) {
+		return (head[0] & 0xFF) | ((head[1] & 0xFF) << 8) | ((head[2] & 0xFF) << 16) | ((head[3] & 0xFF) << 24);
 	}
 }

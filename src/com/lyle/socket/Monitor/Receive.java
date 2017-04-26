@@ -15,9 +15,6 @@ public class Receive {
 		Socket client = server.accept();
 		DataInputStream dis = new DataInputStream(client.getInputStream());
 		List<String> params = new ArrayList<>();
-		for (int i = 0; i < 2; i++) {
-			MonitorUtils.parseResponse(dis, params);
-			System.out.println("------");
-		}
+		MonitorUtils.parseResponse(dis, params);
 	}
 }

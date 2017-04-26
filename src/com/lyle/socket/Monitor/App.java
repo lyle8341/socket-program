@@ -17,13 +17,11 @@ public class App {
 
 	public static void main(String[] args) throws Exception {
 		List<String> params = new ArrayList<>();
-		// FileInputStream fis = new FileInputStream("C:/Users/swere/Desktop/jk/io.txt");
-		FileInputStream fis = new FileInputStream("C:/Users/swere/Desktop/io.txt");
-		// FileInputStream fis = new FileInputStream("C:/Users/swere/Desktop/send.txt");
+		// FileInputStream fis = new FileInputStream("C:/Users/swere/Desktop/4.14/测试1.bin");
+		// FileInputStream fis = new FileInputStream("C:/Users/swere/Desktop/4.14/测试2.bin");
+		// FileInputStream fis = new FileInputStream("C:/Users/swere/Desktop/4.14/测试3.bin");
+		FileInputStream fis = new FileInputStream("C:/Users/swere/Desktop/4.14/测试4.bin");
 		DataInputStream dis = new DataInputStream(fis);
 		MonitorUtils.parseResponse(dis, params);
-		// for (String s : params) {
-		// System.out.println(s);
-		// }
 	}
 }
